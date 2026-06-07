@@ -31,13 +31,26 @@ Projeto iniciado em grupo durante o programa de bolsas da Compass UOL e finaliza
 
 ## Como rodar
 
-### Pré-requisitos
+### Opção 1 — Docker (recomendado)
 
-- Java 17+
-- MySQL 8+
-- Maven
+Pré-requisito: [Docker](https://www.docker.com/) instalado.
 
-### Configuração do banco
+```bash
+docker-compose up --build
+```
+
+A API estará disponível em `http://localhost:8080`.
+A documentação Swagger estará em `http://localhost:8080/docs-EcommerceMenteBinaria.html`.
+
+Para parar:
+
+```bash
+docker-compose down
+```
+
+### Opção 2 — Local
+
+**Pré-requisitos:** Java 17+, MySQL 8+, Maven.
 
 Crie o banco de dados:
 
@@ -45,23 +58,18 @@ Crie o banco de dados:
 CREATE DATABASE ecommerce;
 ```
 
-Configure as credenciais em `src/main/resources/application.properties`:
+Configure as variáveis de ambiente ou edite `src/main/resources/application.properties`:
 
 ```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/ecommerce
 spring.datasource.username=SEU_USUARIO
 spring.datasource.password=SUA_SENHA
 ```
 
-### Rodando a aplicação
+Rode a aplicação:
 
 ```bash
 mvn spring-boot:run
 ```
-
-A API estará disponível em `http://localhost:8080`.
-
-A documentação Swagger estará em `http://localhost:8080/docs-EcommerceMenteBinaria.html`.
 
 ### Rodando os testes
 
