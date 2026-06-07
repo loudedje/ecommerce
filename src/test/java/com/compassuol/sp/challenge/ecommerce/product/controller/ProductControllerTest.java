@@ -1,5 +1,6 @@
 package com.compassuol.sp.challenge.ecommerce.product.controller;
 
+import com.compassuol.sp.challenge.ecommerce.auth.jwt.JwtUtil;
 import com.compassuol.sp.challenge.ecommerce.product.dto.ProductResponseDTO;
 import com.compassuol.sp.challenge.ecommerce.product.exception.ProductNameUniqueViolationException;
 import com.compassuol.sp.challenge.ecommerce.product.repository.ProductRepository;
@@ -10,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.ArrayList;
@@ -20,12 +23,15 @@ import static com.compassuol.sp.challenge.ecommerce.common.ProductConstants.*;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProductController.class)
+@WithMockUser
 class ProductControllerTest {
+
     @Autowired
     MockMvc mockMvc;
 
@@ -36,13 +42,16 @@ class ProductControllerTest {
     ProductService productService;
     @MockBean
     ProductRepository productRepository;
+    @MockBean
+    JwtUtil jwtUtil;
+    @MockBean
+    UserDetailsService userDetailsService;
 
     @Test
     void createProduct_WithValidData_ReturnsCreated() throws Exception {
-
         when(productService.createProduct(PRODUCT_CREATE_DTO)).thenReturn(PRODUCT_RESPONSE_DTO);
 
-        mockMvc.perform(post("/products")
+        mockMvc.perform(post("/products").with(csrf())
                         .content(objectMapper.writeValueAsString(PRODUCT_RESPONSE_DTO))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated());
@@ -50,7 +59,7 @@ class ProductControllerTest {
 
     @Test
     void removeProduct_WithExistingId_ReturnsNoContent() throws Exception {
-        mockMvc.perform(delete("/products/1"))
+        mockMvc.perform(delete("/products/1").with(csrf()))
                 .andExpect(status().isNoContent());
     }
 
@@ -58,11 +67,9 @@ class ProductControllerTest {
     void updateProduct_WithValidaDatas_ReturnsNewProduct() throws Exception {
         when(productRepository.findById(anyLong())).thenReturn(Optional.of(PRODUCT));
 
-        mockMvc.perform(put("/products/{id}", 1L)
+        mockMvc.perform(put("/products/{id}", 1L).with(csrf())
                         .content(objectMapper.writeValueAsString(PRODUCT_RESPONSE_DTO))
-                        .contentType(
-                                MediaType.APPLICATION_JSON
-                        ))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
 
@@ -70,14 +77,13 @@ class ProductControllerTest {
     void getProduct_ByExistingId_ReturnsProduct() throws Exception {
         when(productService.getById(1L)).thenReturn(PRODUCT_RESPONSE_DTO);
 
-        mockMvc.perform(
-                        get("/products/1")
-                )
+        mockMvc.perform(get("/products/1"))
                 .andExpect(status().isOk());
     }
-   @Test
-   void getProduct_ByNonexistingId_ReturnsNotFound() throws Exception {
-       when(productService.getById(anyLong())).thenThrow(ProductNameUniqueViolationException.class);
+
+    @Test
+    void getProduct_ByNonexistingId_ReturnsNotFound() throws Exception {
+        when(productService.getById(anyLong())).thenThrow(jakarta.persistence.EntityNotFoundException.class);
         mockMvc.perform(get("/products/0")).andExpect(status().isNotFound());
     }
 
@@ -87,12 +93,8 @@ class ProductControllerTest {
         products.add(PRODUCT_RESPONSE_DTO);
         when(productService.getAll()).thenReturn(products);
 
-        mockMvc
-                .perform(
-                        get("/products"))
+        mockMvc.perform(get("/products"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
-
     }
-
 }

@@ -1,5 +1,6 @@
 package com.compassuol.sp.challenge.ecommerce.order.controller;
-import com.compassuol.sp.challenge.ecommerce.common.OrderConstants;
+
+import com.compassuol.sp.challenge.ecommerce.auth.jwt.JwtUtil;
 import com.compassuol.sp.challenge.ecommerce.order.consumer.ViaCepConsumerFeign;
 import com.compassuol.sp.challenge.ecommerce.order.dto.OrderDeleteDTO;
 import com.compassuol.sp.challenge.ecommerce.order.dto.OrderResponseDTO;
@@ -17,28 +18,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
 import java.util.Optional;
 
 import static com.compassuol.sp.challenge.ecommerce.common.OrderConstants.*;
-
-import static com.compassuol.sp.challenge.ecommerce.common.ProductConstants.PRODUCT;
 import static org.hamcrest.Matchers.hasSize;
-
-import static com.compassuol.sp.challenge.ecommerce.common.ProductConstants.PRODUCT_RESPONSE_DTO;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
+@WithMockUser
 class OrderControllerTest {
 
     @Autowired
@@ -51,116 +51,98 @@ class OrderControllerTest {
     OrderService orderService;
     @MockBean
     OrderRepository orderRepository;
+    @MockBean
+    JwtUtil jwtUtil;
+    @MockBean
+    UserDetailsService userDetailsService;
+
     @Mock
     AddressRepository addressRepository;
-
     @Mock
     ViaCepConsumerFeign viaCepConsumerFeign;
 
     @AfterEach
-    public void afterEach(){
-        ORDER_WITH_STATUS_CONFIRMED.setId(null);
-        ORDER_WITH_STATUS_SENT.setId(null);
+    public void afterEach() {
+        ORDER_WITH_STATUS_CONFIRMED.setId(100L);
+        ORDER_WITH_STATUS_SENT.setId(101L);
     }
 
     @Test
     void createOrder_WithValidData_ReturnsStatusIsCreated() throws Exception {
-        //OrderDeleteDTO dto = new OrderDeleteDTO("odiei o produto");
         when(orderService.createOrder(any())).thenReturn(ORDER_RESPONSE_DTO);
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post("/orders").with(csrf())
                         .content(objectMapper.writeValueAsString(VALID_CREATE_ORDER_DTO))
-                        .contentType(
-                                MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated());
     }
 
     @Test
     void createOrder_WithNonexistentProductId_ThrowsExceptionNotFound() throws Exception {
         when(orderService.createOrder(any())).thenThrow(new EntityNotFoundException());
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(post("/orders").with(csrf())
                         .content(objectMapper.writeValueAsString(VALID_CREATE_ORDER_DTO))
-                        .contentType(
-                                MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void listOrder_ReturnsAllOrder() throws Exception {
-        OrderResponseDTO orderResponseDTO = new OrderResponseDTO();
         List<OrderResponseDTO> orders = new ArrayList<>();
-        orders.add(orderResponseDTO);
+        orders.add(new OrderResponseDTO());
         when(orderService.getAll()).thenReturn(orders);
-        mockMvc
-                .perform(
-                        get("/orders"))
+        mockMvc.perform(get("/orders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
     }
 
     @Test
     void getById_WithValidId() throws Exception {
-        OrderResponseDTO sut = orderService.getbyId(ORDER_WITH_STATUS_CONFIRMED.getId());
-        when(orderService.getbyId(1L)).thenReturn(sut);
-
-        mockMvc.perform(
-                get("/orders/1")
-        ).andExpect(status().isOk());
+        when(orderService.getbyId(1L)).thenReturn(new OrderResponseDTO());
+        mockMvc.perform(get("/orders/1")).andExpect(status().isOk());
     }
 
     @Test
     void getById_WithInvalidId() throws Exception {
         when(orderService.getbyId(1L)).thenThrow(EntityNotFoundException.class);
-
-        mockMvc.perform(
-                get("/orders/1")
-        ).andExpect(status().isNotFound());
+        mockMvc.perform(get("/orders/1")).andExpect(status().isNotFound());
     }
+
     @Test
-    void removeProduct_WithValidData_ReturnsOrderWithOrderStatusCanceled() throws Exception{
+    void removeProduct_WithValidData_ReturnsOrderWithOrderStatusCanceled() throws Exception {
         OrderDeleteDTO dto = new OrderDeleteDTO("odiei o produto");
-        when(orderRepository.findById(anyLong())).thenReturn(Optional.of(ORDER_WITH_STATUS_CONFIRMED));
-        mockMvc.perform(delete("/orders/100")
-                .content(objectMapper.writeValueAsString(dto))
-                .contentType(
-                        MediaType.APPLICATION_JSON))
+        when(orderService.removeOrder(anyLong(), any())).thenReturn(ORDER_RESPONSE_DTO);
+        mockMvc.perform(delete("/orders/100").with(csrf())
+                        .content(objectMapper.writeValueAsString(dto))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
+
     @Test
-    void removeProduct_WithInvalidData_Returns() throws Exception{
+    void removeProduct_WithInvalidData_Returns() throws Exception {
         OrderDeleteDTO dto = new OrderDeleteDTO("odiei o produto");
-        when(orderRepository.findById(anyLong())).thenReturn(Optional.of(ORDER_WITH_STATUS_SENT));
         when(orderService.removeOrder(anyLong(), any())).thenThrow(OrderStatusNotAuthorizedException.class);
-        mockMvc.perform(delete("/orders/101")
+        mockMvc.perform(delete("/orders/101").with(csrf())
                         .content(objectMapper.writeValueAsString(dto))
-                        .contentType(
-                                MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(delete("/orders/a")
+        mockMvc.perform(delete("/orders/a").with(csrf())
                         .content(objectMapper.writeValueAsString(dto))
-                        .contentType(
-                                MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void updateOrder_WithValidData_ReturnsNewOrder() throws Exception {
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(ORDER_WITH_STATUS_CONFIRMED));
-
-        mockMvc.perform(
-                        get("/orders/1")
-                )
-                .andExpect(status().isOk());
+        when(orderService.getbyId(1L)).thenReturn(new OrderResponseDTO());
+        mockMvc.perform(get("/orders/1")).andExpect(status().isOk());
     }
 
     @Test
     void updateOrder_WithInvalidId() throws Exception {
-
-        OrderUpdateDTO updateDto = new OrderUpdateDTO();
-        when(orderService.updateOrder(999L, updateDto))
-                .thenThrow(EntityNotFoundException.class);
-        mockMvc.perform(MockMvcRequestBuilders.put("/999")
+        when(orderService.updateOrder(anyLong(), any())).thenThrow(EntityNotFoundException.class);
+        mockMvc.perform(MockMvcRequestBuilders.put("/orders/999").with(csrf())
+                        .content("{}")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
-
 }

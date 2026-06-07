@@ -1,6 +1,7 @@
 package com.compassuol.sp.challenge.ecommerce.handler;
 
 
+import com.compassuol.sp.challenge.ecommerce.auth.exception.EmailAlreadyExistsException;
 import com.compassuol.sp.challenge.ecommerce.order.exception.OrderStatusNotAuthorizedException;
 import com.compassuol.sp.challenge.ecommerce.order.exception.PostalCodeNotFoundException;
 import com.compassuol.sp.challenge.ecommerce.product.exception.ProductNameUniqueViolationException;
@@ -39,6 +40,14 @@ public class ApiExceptionHandler {
             , BindingResult result){
         log.error("API ERROR: ", ex);
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).contentType(MediaType.APPLICATION_JSON).body(new ErrorMessage(request, HttpStatus.UNPROCESSABLE_ENTITY, "Invalid Fields", result));
+    }
+
+    @ExceptionHandler({EmailAlreadyExistsException.class})
+    public ResponseEntity<ErrorMessage> handleEmailAlreadyExists(EmailAlreadyExistsException ex, HttpServletRequest request){
+        log.error("API ERROR: ", ex);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ErrorMessage(request, HttpStatus.CONFLICT, ex.getMessage()));
     }
 
     @ExceptionHandler({ProductNameUniqueViolationException.class})
