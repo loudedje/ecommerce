@@ -42,11 +42,11 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler({ProductNameUniqueViolationException.class})
-    public ResponseEntity<ErrorMessage> handleUniqueViolationException(DataIntegrityViolationException ex, HttpServletRequest request){
+    public ResponseEntity<ErrorMessage> handleUniqueViolationException(ProductNameUniqueViolationException ex, HttpServletRequest request){
         log.error("API ERROR: ", ex);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        return ResponseEntity.status(HttpStatus.CONFLICT)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ErrorMessage(request, HttpStatus.NOT_FOUND, ex.getMessage()));
+                .body(new ErrorMessage(request, HttpStatus.CONFLICT, ex.getMessage()));
     }
 
     @ExceptionHandler({HttpRequestMethodNotSupportedException.class})

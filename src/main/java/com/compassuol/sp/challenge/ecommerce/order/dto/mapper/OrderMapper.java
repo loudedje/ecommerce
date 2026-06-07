@@ -48,11 +48,11 @@ public class OrderMapper {
         return orders.stream().map(order -> toDTO(order)).collect(Collectors.toList());
     }
     public static void toAddress(AddressDTO dto, Address address) {
-        if(dto.getCity()==null)
+        if(dto.getCity() != null)
             address.setCity(dto.getCity());
-        if(dto.getStreet()==null)
+        if(dto.getStreet() != null)
             address.setStreet(dto.getStreet());
-        if(dto.getState()==null)
+        if(dto.getState() != null)
             address.setState(dto.getState());
 
         address.setNumber(dto.getNumber());
@@ -86,8 +86,6 @@ public class OrderMapper {
                 );
                 order.addProduct(product, orderProduct.getQuantity());
             }
-        } else {
-            System.out.println("Warning: productDTOList is null.");
         }
     }
 
