@@ -37,7 +37,8 @@ public class SecurityConfig {
                                 "/docs-EcommerceMenteBinaria.html",
                                 "/docs-EcommerceMenteBinaria/**",
                                 "/v3/api-docs/**",
-                                "/swagger-ui/**"
+                                "/swagger-ui/**",
+                                "/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
